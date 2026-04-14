@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#f97316" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Cali-X" />
+  <title>Cali-X</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { orange: { 400: '#fb923c', 500: '#f97316', 600: '#ea580c' } }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    body { margin: 0; background: #000; overscroll-behavior: none; }
+    #root { max-width: 450px; margin: 0 auto; min-height: 100dvh; }
+    ::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // ─── TRAINING DATA ────────────────────────────────────────────────────────
+    const phase1 = [
+      { a: "שכיבות שמיכה רגילות", b: "משיכות שורה (שולחן/כסא)" },
+      { a: "שכיבות שמיכה רחבות", b: "משיכות שורה אחיזה הפוכה" },
+      { a: "שכיבות שמיכה צרות (טריצפס)", b: "שורה בזווית תלולה" },
+      { a: "שכיבות שמיכה עם הרמת יד", b: "שורה חד-ידנית (שמאל)" },
+      { a: "שכיבות שמיכה עם הרמת יד", b: "שורה חד-ידנית (ימין)" },
+      { a: "שכיבות שמיכה עם מחיאות כף", b: "שורה נפיצה" },
+      { a: "שכיבות שמיכה ארצר", b: "שורה עם שהייה 2 שניות" },
+      { a: "שכיבות שמיכה הרים (פייק)", b: "שורה רחבה" },
+      { a: "נגטיב שכיבות שמיכה (5 שניות ירידה)", b: "שורה איטית (4 שניות)" },
+      { a: "שכיבות שמיכה עם רגליים מורמות", b: "שורה עם רגל אחת מורמת" },
+      { a: "שכיבות שמיכה על אגרופים", b: "שורה טבעת/TRX" },
+      { a: "כפיפת מרפקים (ציפורן)", b: "שורה עם פיצוץ בשלב העלייה" },
+      { a: "שכיבות שמיכה ארצר עמוקות", b: "שורה בהמשך פנים לרצפה" },
+      { a: "שכיבות שמיכה 90° עצור", b: "שורה + כיווץ כתף 2 שניות" },
+      { a: "שכיבות שמיכה פייק עמוק", b: "שורה על ברכיים מורחבות" },
+      { a: "נגטיב + נפיץ (מחזור)", b: "שורה Tempo 3:1:3" },
+      { a: "שכיבות שמיכה + שורה חד-ידנית", b: "קומבו: שורה + לחיצת כתף" },
+      { a: "שכיבות שמיכה על אצבעות", b: "שורה מקסימלית (PR)" },
+      { a: "שכיבות שמיכה נפיצות מרצפה", b: "שורה עם קפיצה" },
+      { a: "בחינת שלב 1 - מקסימום ב-1 דקה", b: "בחינת שורה - מקסימום ב-1 דקה" },
+    ];
+    const phase2 = [
+      { a: "High Pull לסנטר", b: "פייק מגבוה (שולחן)" },
+      { a: "High Pull לחזה", b: "פייק עם נגיעת כתפיים" },
+      { a: "L-Sit בשכיבה (תרגול)", b: "פייק דחיסה (compression)" },
+      { a: "Pull להוריד ל-L", b: "Shoulder Tap מגבוה" },
+      { a: "נגטיב L-Sit", b: "פייק + Shoulder Tap" },
+      { a: "L-Sit Hold 3 שניות", b: "פייק + כיפוף מרפקים" },
+      { a: "High Pull + L-Sit מחזור", b: "פייק + Shoulder Tap + ירידה איטית" },
+      { a: "L-Sit Hold 5 שניות", b: "פייק הפוך (על הקיר)" },
+      { a: "L-Sit Dip (תחתית)", b: "Wall Handstand עם רגל אחת" },
+      { a: "L-Sit + High Pull combo", b: "Wall Handstand + Shoulder Tap" },
+      { a: "L-Sit Hold 8 שניות", b: "Wall Handstand 20 שניות" },
+      { a: "Straddle L-Sit תרגול", b: "Freestanding Handstand ניסיון" },
+      { a: "Straddle L-Sit Hold 3 שניות", b: "Handstand שגרת כניסה" },
+      { a: "L-Sit לכתיים (זרועות ישרות)", b: "Handstand + ירידה מבוקרת" },
+      { a: "L-Sit to Tuck Planche", b: "Handstand Hold 5 שניות" },
+      { a: "Straddle L-Sit עצור", b: "Handstand Push Up נגטיב" },
+      { a: "L-Sit + Planche Lean", b: "Handstand Push Up מלא" },
+      { a: "Manna תרגול", b: "Handstand מרחוק מהקיר" },
+      { a: "L-Sit PR", b: "Freestanding Handstand 3 שניות" },
+      { a: "בחינת L-Sit", b: "בחינת Handstand" },
+    ];
+    const phase3 = [
+      { a: "Bar Muscle-up נגטיב", b: "Diamond Push-up" },
+      { a: "Bar Muscle-up ניסיון מלא", b: "Diamond Push-up + מחיאה" },
+      { a: "Ring Muscle-up תרגול", b: "Close Grip Dip" },
+      { a: "Muscle-up Transition תרגול", b: "Dip + Shoulder Tap" },
+      { a: "Muscle-up מלא (בר/טבעת)", b: "Pseudo Planche Push-up" },
+      { a: "Kick-up לHandstand", b: "Planche Lean שניות" },
+      { a: "Kick-up + Hold 3 שניות", b: "Pike Push-up עמוק" },
+      { a: "Freestanding Handstand 5 שניות", b: "Pike Push-up נגטיב" },
+      { a: "Bar Dip נפיץ", b: "L-Sit ל-V-Sit תרגול" },
+      { a: "Bar Dip + L-Sit מחזור", b: "V-Sit Hold 2 שניות" },
+      { a: "Bar Dip נגטיב 5 שניות", b: "Planche Lean מתקדם" },
+      { a: "Bar Dip + Muscle-up מחזור", b: "Tuck Planche Hold" },
+      { a: "Volume Round: 5 Muscle-ups", b: "Volume Round: 10 Dips" },
+      { a: "Volume Round: 8 Muscle-ups", b: "Volume Round: 15 Diamond" },
+      { a: "Full Combo: MU + Dip + HS", b: "Full Combo: L-Sit + Planche" },
+      { a: "Flow: Dip → MU → Handstand", b: "Flow: Diamond → L-Sit → Planche" },
+      { a: "PR Test: Muscle-ups max", b: "PR Test: Dips max" },
+      { a: "PR Test: Handstand hold", b: "PR Test: L-Sit hold" },
+      { a: "Final Flow: כל המיומנויות", b: "Final Flow: כל הכוח" },
+      { a: "🏆 Grand Finale - מקסימום", b: "🏆 Grand Finale - כוח מלא" },
+    ];
+
+    const STAGES = Array.from({ length: 60 }, (_, i) => {
+      const s = i + 1;
+      const phase = s <= 20 ? 1 : s <= 40 ? 2 : 3;
+      const ex = phase === 1 ? phase1[s-1] : phase === 2 ? phase2[s-21] : phase3[s-41];
+      return {
+        id: s, phase,
+        title: `שלב ${s}`,
+        exerciseA: ex.a,
+        exerciseB: ex.b,
+        reps: phase === 1 ? "6-8" : phase === 2 ? "5-7" : "4-6",
+      };
+    });
+
+    const PHASE_NAMES = { 1: "פאזה 1 — בסיס כוח", 2: "פאזה 2 — מיומנויות", 3: "פאזה 3 — עילית" };
+
+    // ─── STORAGE ──────────────────────────────────────────────────────────────
+    const STORAGE_KEY = "calix_v1";
+    function loadData() {
+      try { const r = localStorage.getItem(STORAGE_KEY); if (r) return JSON.parse(r); } catch {}
+      return null;
+    }
+    function saveData(d) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch {}
+    }
+    const defaultData = () => ({ unlockedStages: [1], completedStages: [], currentStage: 1, history: [] });
+
+    // ─── EXERCISE VISUAL ──────────────────────────────────────────────────────
+    function ExerciseVisual({ name, large }) {
+      const emoji = name.includes("שכיב") ? "💪" : name.includes("שורה") || name.includes("משיכ") ? "🔄" :
+        name.includes("Handstand") ? "🤸" : name.includes("Muscle") ? "🏋️" :
+        name.includes("L-Sit") || name.includes("V-Sit") ? "🦵" : name.includes("Dip") ? "⬇️" :
+        name.includes("פייק") ? "🔼" : name.includes("🏆") ? "🏆" : "⚡";
+      return (
+        <div className={`flex flex-col items-center justify-center bg-gradient-to-br from-zinc-900 to-zinc-800 border border-orange-500/20 rounded-2xl ${large ? "w-full aspect-square" : "w-full h-full"}`}>
+          <span className={large ? "text-7xl mb-3" : "text-2xl"}>{emoji}</span>
+          {large && <p className="text-orange-400 text-sm font-semibold text-center px-4 mt-1" style={{fontFamily:"'Assistant',sans-serif"}}>{name}</p>}
+        </div>
+      );
+    }
+
+    // ─── WORKOUT SCREEN ───────────────────────────────────────────────────────
+    function WorkoutScreen({ stage, onComplete, onBack }) {
+      const [minuteIndex, setMinuteIndex] = useState(0);
+      const [secondsInMinute, setSecondsInMinute] = useState(0);
+      const [totalSeconds, setTotalSeconds] = useState(0);
+      const [running, setRunning] = useState(false);
+      const [done, setDone] = useState(false);
+      const intervalRef = useRef(null);
+      const TOTAL = 15;
+
+      const isWarmup = minuteIndex < 3;
+      const emomMin = minuteIndex - 3;
+      const isA = !isWarmup && emomMin % 2 === 0;
+      const currentEx = isWarmup ? null : isA ? stage.exerciseA : stage.exerciseB;
+      const round = !isWarmup ? Math.floor(emomMin / 2) + 1 : null;
+      const progress = (minuteIndex / TOTAL) * 100;
+      const timeDisplay = `${String(Math.floor(totalSeconds/60)).padStart(2,"0")}:${String(totalSeconds%60).padStart(2,"0")}`;
+      const secLeft = String(59 - secondsInMinute).padStart(2,"0");
+
+      useEffect(() => {
+        if (running && !done) {
+          intervalRef.current = setInterval(() => {
+            setSecondsInMinute(s => {
+              if (s >= 59) {
+                setMinuteIndex(m => {
+                  const next = m + 1;
+                  if (next >= TOTAL) { setDone(true); setRunning(false); }
+                  return next;
+                });
+                return 0;
+              }
+              return s + 1;
+            });
+            setTotalSeconds(t => t + 1);
+          }, 1000);
+        }
+        return () => clearInterval(intervalRef.current);
+      }, [running, done]);
+
+      const skipMinute = () => {
+        if (minuteIndex < TOTAL - 1) { setMinuteIndex(m => m+1); setSecondsInMinute(0); }
+        else { setDone(true); setRunning(false); }
+      };
+
+      if (done) return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-6" dir="rtl">
+          <div className="text-8xl mb-4">🏆</div>
+          <h2 className="text-4xl font-black text-orange-500 mb-2" style={{fontFamily:"'Bebas Neue',cursive",letterSpacing:"3px"}}>אימון הושלם!</h2>
+          <p className="text-zinc-400 mb-1">{stage.title}</p>
+          <p className="text-zinc-500 text-sm mb-8">זמן כולל: {timeDisplay}</p>
+          <button onClick={onComplete} className="bg-orange-500 text-black font-black text-xl px-10 py-4 rounded-2xl w-full active:scale-95 transition-transform" style={{fontFamily:"'Bebas Neue',cursive",letterSpacing:"2px"}}>
+            סיים ופתח שלב הבא
+          </button>
+          <button onClick={onBack} className="mt-4 text-zinc-500 text-sm underline">חזור בלי לסמן</button>
+        </div>
+      );
+
+      return (
+        <div className="flex flex-col min-h-screen bg-black text-white" dir="rtl">
+          <div className="flex items-center justify-between px-4 pt-5 pb-2">
+            <button onClick={onBack} className="text-zinc-400 active:text-orange-500 text-2xl">‹</button>
+            <div className="text-center">
+              <h2 className="text-orange-500 font-black text-xl" style={{fontFamily:"'Bebas Neue',cursive",letterSpacing:"2px"}}>{stage.title}</h2>
+              <p className="text-zinc-500 text-xs">{PHASE_NAMES[stage.phase]}</p>
+            </div>
+            <div className="text-zinc-400 text-sm font-mono">{timeDisplay}</div>
+          </div>
+
+          <div className="mx-4 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+            <div className="h-full bg-orange-500 rounded-full transition-all duration-1000" style={{width:`${progress}%`}} />
+          </div>
+
+          <div className="flex justify-center mt-3">
+            {isWarmup
+              ? <span className="bg-blue-500/20 text-blue-400 text-xs font-bold px-3 py-1 rounded-full border border-blue-500/30">חימום — דקה {minuteIndex+1}/3</span>
+              : <span className={`text-xs font-bold px-3 py-1 rounded-full border ${isA ? "bg-orange-500/20 text-orange-400 border-orange-500/30" : "bg-purple-500/20 text-purple-400 border-purple-500/30"}`}>
+                  {isA ? "תרגיל A" : "תרגיל B"} — סט {round}/6
+                </span>
+            }
+          </div>
+
+          <div className="px-4 mt-3 flex-1">
+            {isWarmup
+              ? <div className="w-full aspect-square bg-gradient-to-br from-zinc-900 to-zinc-800 border border-zinc-700 rounded-2xl flex flex-col items-center justify-center p-6">
+                  <span className="text-6xl mb-4">🔥</span>
+                  <h3 className="text-2xl font-black text-white" style={{fontFamily:"'Bebas Neue',cursive"}}>זמן חימום</h3>
+                  <div className="mt-4 text-zinc-400 text-sm text-center space-y-1">
+                    <p>• סיבובי כתפיים ועגל</p><p>• הליכה במקום + הרמת ברכיים</p>
+                    <p>• מתיחות דינמיות לזרועות</p><p>• 5 שכיבות שמיכה קלות</p>
+                  </div>
+                </div>
+              : <div className="w-full aspect-square"><ExerciseVisual name={currentEx} large /></div>
+            }
+            {running && (
+              <div className="mt-3 flex justify-center">
+                <div className="bg-zinc-900 border border-orange-500/30 rounded-xl px-6 py-2 flex items-center gap-2">
+                  <span className="text-zinc-500 text-sm">נותרו</span>
+                  <span className="text-orange-500 font-black text-2xl" style={{fontFamily:"monospace"}}>{secLeft}</span>
+                  <span className="text-zinc-500 text-sm">שניות</span>
+                </div>
+              </div>
+            )}
+            {!isWarmup && <div className="mt-2 text-center text-zinc-500 text-xs">{stage.reps} חזרות • עד סוף הדקה</div>}
+          </div>
+
+          <div className="px-4 mt-4">
+            <p className="text-zinc-600 text-xs mb-2">מבנה האימון</p>
+            <div className="grid grid-cols-5 gap-1.5">
+              {[{l:"🔥",i:0},{l:"🔥",i:1},{l:"🔥",i:2},...Array.from({length:12},(_,k)=>({l:k%2===0?"A":"B",i:k+3}))].map(item => (
+                <div key={item.i} className={`rounded-lg aspect-square flex items-center justify-center border text-xs font-black transition-all ${item.i < minuteIndex ? "bg-orange-500/10 border-orange-500/40 text-orange-500" : item.i === minuteIndex ? "bg-orange-500/30 border-orange-500 text-white scale-110" : "bg-zinc-900 border-zinc-800 text-zinc-600"}`}>
+                  {item.l}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-4 mt-4">
+            {!running
+              ? <button onClick={() => setRunning(true)} className="w-full bg-orange-500 text-black font-black text-2xl py-5 rounded-2xl active:scale-95 transition-transform" style={{fontFamily:"'Bebas Neue',cursive",letterSpacing:"4px"}}>
+                  {totalSeconds === 0 ? "▶ התחל אימון" : "▶ המשך"}
+                </button>
+              : <div className="flex gap-3">
+                  <button onClick={() => setRunning(false)} className="flex-1 bg-zinc-800 text-white font-bold py-4 rounded-2xl text-sm active:scale-95">עצור</button>
+                  <button onClick={skipMinute} className="flex-1 bg-zinc-700 text-orange-400 font-bold py-4 rounded-2xl text-sm border border-orange-500/20 active:scale-95">דקה הבאה ⏭</button>
+                </div>
+            }
+          </div>
+        </div>
+      );
+    }
+
+    // ─── STAGE CARD ───────────────────────────────────────────────────────────
+    function StageCard({ stage, isUnlocked, isCompleted, isCurrent, onClick }) {
+      return (
+        <button onClick={onClick} disabled={!isUnlocked} className={`w-full text-right p-3 rounded-xl border transition-all active:scale-95 ${isCurrent ? "bg-orange-500/15 border-orange-500 shadow-lg shadow-orange-500/10" : isCompleted ? "bg-zinc-900/60 border-zinc-700/50 opacity-80" : isUnlocked ? "bg-zinc-900 border-zinc-700" : "bg-zinc-950 border-zinc-800/50 opacity-40"}`} dir="rtl">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 font-black ${isCompleted ? "bg-green-500/20 text-green-400" : isCurrent ? "bg-orange-500 text-black" : isUnlocked ? "bg-zinc-800 text-zinc-300" : "bg-zinc-900 text-zinc-600"}`} style={{fontFamily:"'Bebas Neue',cursive",fontSize:"16px"}}>
+              {isCompleted ? "✓" : isUnlocked ? stage.id : "🔒"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={`font-black text-sm ${isCurrent ? "text-orange-400" : isCompleted ? "text-zinc-400" : "text-white"}`} style={{fontFamily:"'Bebas Neue',cursive",letterSpacing:"1px"}}>{stage.title}</span>
+                {isCurrent && <span className="text-[10px] bg-orange-500 text-black px-1.5 py-0.5 rounded font-bold">עכשיו</span>}
+              </div>
+              <p className="text-zinc-500 text-xs truncate mt-0.5">{stage.exerciseA} / {stage.exerciseB}</p>
+            </div>
+            <span className={`text-xs px-2 py-0.5 rounded-full border flex-shrink-0 ${stage.phase===1?"text-blue-400 border-blue-500/30 bg-blue-500/10":stage.phase===2?"text-purple-400 border-purple-500/30 bg-purple-500/10":"text-orange-400 border-orange-500/30 bg-orange-500/10"}`}>P{stage.phase}</span>
+          </div>
+        </button>
+      );
+    }
+
+    // ─── MAIN APP ─────────────────────────────────────────────────────────────
+    function CaliX() {
+      const [appData, setAppData] = useState(null);
+      const [view, setView] = useState("home");
+      const [selectedStage, setSelectedStage] = useState(null);
+      const [filterPhase, setFilterPhase] = useState(0);
+
+      useEffect(() => {
+        const saved = loadData();
+        setAppData(saved || defaultData());
+      }, []);
+
+      useEffect(() => { if (appData) saveData(appData); }, [appData]);
+
+      const handleComplete = useCallback((stageId) => {
+        setAppData(prev => {
+          const completed = prev.completedStages.includes(stageId) ? prev.completedStages : [...prev.completedStages, stageId];
+          const nextId = stageId + 1;
+          const unlocked = nextId <= 60 && !prev.unlockedStages.includes(nextId) ? [...prev.unlockedStages, nextId] : prev.unlockedStages;
+          const history = [...prev.history, { stageId, date: new Date().toLocaleDateString("he-IL") }];
+          return { ...prev, completedStages: completed, unlockedStages: unlocked, currentStage: Math.min(nextId, 60), history };
+        });
+        setView("home");
+      }, []);
+
+      if (!appData) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="text-orange-500 text-3xl animate-pulse" style={{fontFamily:"'Bebas Neue',cursive"}}>CALI-X</div></div>;
+
+      if (view === "workout" && selectedStage) return <WorkoutScreen stage={selectedStage} onComplete={() => handleComplete(selectedStage.id)} onBack={() => setView("stages")} />;
+
+      const currentStage = STAGES.find(s => s.id === appData.currentStage);
+      const completedCount = appData.completedStages.length;
+      const progressPercent = Math.round((completedCount / 60) * 100);
+      const filtered = filterPhase === 0 ? STAGES : STAGES.filter(s => s.phase === filterPhase);
+
+      if (view === "stages") return (
+        <div className="min-h-screen bg-black text-white flex flex-col" dir="rtl">
+          <div className="sticky top-0 bg-black/95 backdrop-blur z-10 px-4 pt-4 pb-3 border-b border-zinc-800">
+            <div className="flex items-center justify-between mb-3">
+              <button onClick={() => setView("home")} className="text-zinc-400 active:text-orange-500 text-2xl">‹</button>
+              <h1 className="text-orange-500 font-black text-xl" style={{fontFamily:"'Bebas Neue',cursive",letterSpacing:"3px"}}>60 שלבי האימון</h1>
+              <span className="text-zinc-500 text-sm">{completedCount}/60</span>
+            </div>
+            <div className="flex gap-2">
+              {[0,1,2,3].map(p => (
+                <button key={p} onClick={() => setFilterPhase(p)} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${filterPhase===p?"bg-orange-500 text-black":"bg-zinc-900 text-zinc-400 border border-zinc-800"}`}>
+                  {p===0?"הכל":`פאזה ${p}`}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 pb-8">
+            {filtered.map(stage => (
+              <StageCard key={stage.id} stage={stage}
+                isUnlocked={appData.unlockedStages.includes(stage.id)}
+                isCompleted={appData.completedStages.includes(stage.id)}
+                isCurrent={stage.id === appData.currentStage}
+                onClick={() => { setSelectedStage(stage); setView("workout"); }}
+              />
+            ))}
+          </div>
+        </div>
+      );
+
+      return (
+        <div className="min-h-screen bg-black text-white flex flex-col" dir="rtl" style={{fontFamily:"'Assistant',sans-serif"}}>
+          <div className="flex items-center justify-between px-5 pt-6">
+            <h1 className="text-orange-500 font-black text-4xl tracking-widest" style={{fontFamily:"'Bebas Neue',cursive"}}>CALI-X</h1>
+            <button onClick={() => setView("stages")} className="text-zinc-400 text-sm border border-zinc-700 px-3 py-1.5 rounded-lg active:bg-zinc-800">כל השלבים</button>
+          </div>
+
+          <div className="mx-5 mt-4 bg-gradient-to-l from-orange-500/5 to-orange-500/15 border border-orange-500/20 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-orange-400 text-xs font-bold uppercase tracking-widest">🔥 {PHASE_NAMES[currentStage.phase]}</span>
+            </div>
+            <h2 className="text-white font-black text-2xl" style={{fontFamily:"'Bebas Neue',cursive",letterSpacing:"2px"}}>{currentStage.title}</h2>
+            <div className="flex gap-4 mt-2">
+              <div><p className="text-zinc-500 text-[10px] uppercase tracking-wider">תרגיל A</p><p className="text-zinc-200 text-sm">{currentStage.exerciseA}</p></div>
+              <div className="w-px bg-zinc-700" />
+              <div><p className="text-zinc-500 text-[10px] uppercase tracking-wider">תרגיל B</p><p className="text-zinc-200 text-sm">{currentStage.exerciseB}</p></div>
+            </div>
+          </div>
+
+          <div className="mx-5 mt-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-zinc-500 text-xs">התקדמות כללית</span>
+              <span className="text-orange-500 font-black text-sm">{progressPercent}%</span>
+            </div>
+            <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-orange-600 to-orange-400 rounded-full transition-all duration-700" style={{width:`${progressPercent}%`}} />
+            </div>
+            <div className="flex justify-between mt-1">
+              <span className="text-zinc-600 text-[10px]">0</span>
+              <span className="text-zinc-400 text-[10px]">{completedCount} / 60 שלבים</span>
+              <span className="text-zinc-600 text-[10px]">60</span>
+            </div>
+          </div>
+
+          <div className="mx-5 mt-4 grid grid-cols-3 gap-3">
+            {[{label:"הושלמו",value:completedCount,icon:"✅"},{label:"שלב נוכחי",value:appData.currentStage,icon:"⚡"},{label:"נותרו",value:60-completedCount,icon:"🎯"}].map(s => (
+              <div key={s.label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center">
+                <div className="text-xl mb-1">{s.icon}</div>
+                <div className="text-white font-black text-xl" style={{fontFamily:"'Bebas Neue',cursive"}}>{s.value}</div>
+                <div className="text-zinc-500 text-[10px]">{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mx-5 mt-4 space-y-2">
+            {[1,2,3].map(phase => {
+              const ph = STAGES.filter(s => s.phase === phase);
+              const done = ph.filter(s => appData.completedStages.includes(s.id)).length;
+              return (
+                <div key={phase} className="flex items-center gap-3">
+                  <span className={`text-[10px] font-bold w-14 flex-shrink-0 ${phase===1?"text-blue-400":phase===2?"text-purple-400":"text-orange-400"}`}>פאזה {phase}</span>
+                  <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-700 ${phase===1?"bg-blue-500":phase===2?"bg-purple-500":"bg-orange-500"}`} style={{width:`${(done/20)*100}%`}} />
+                  </div>
+                  <span className="text-zinc-500 text-[10px] w-10 text-left">{done}/20</span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mx-5 mt-6 mb-8">
+            <button onClick={() => { setSelectedStage(currentStage); setView("workout"); }} className="w-full bg-orange-500 text-black font-black text-2xl py-5 rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl shadow-orange-500/20" style={{fontFamily:"'Bebas Neue',cursive",letterSpacing:"4px"}}>
+              ▶ התחל אימון
+            </button>
+            {appData.history.length > 0 && (
+              <div className="mt-4 bg-zinc-900 border border-zinc-800 rounded-xl p-3">
+                <p className="text-zinc-500 text-xs mb-2 font-medium">אימונים אחרונים</p>
+                <div className="space-y-1.5">
+                  {appData.history.slice(-4).reverse().map((h, i) => (
+                    <div key={i} className="flex justify-between"><span className="text-zinc-300 text-xs">שלב {h.stageId}</span><span className="text-zinc-600 text-xs">{h.date}</span></div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<CaliX />);
+
+    // ─── SERVICE WORKER REGISTRATION ──────────────────────────────────────────
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
